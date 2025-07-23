@@ -1,41 +1,36 @@
 import { NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 import type { Task } from "@/types"
-
-// Mock database for tasks
-const tasks: Record<string, Task[]> = {
-  "1": [
-    { id: "1-1", title: "Research colleges", completed: true, priority: "high" },
-    { id: "1-2", title: "Write personal statement", completed: false, priority: "high" },
-    { id: "1-3", title: "Get recommendation letters", completed: false, priority: "medium" },
-    { id: "1-4", title: "Submit applications", completed: false, priority: "high" },
-  ],
-  "2": [
-    { id: "2-1", title: "Brainstorm topics", completed: true, priority: "medium" },
-    { id: "2-2", title: "Write first draft", completed: false, priority: "high" },
-    { id: "2-3", title: "Get feedback", completed: false, priority: "medium" },
-    { id: "2-4", title: "Final revision", completed: false, priority: "high" },
-  ],
-  "3": [
-    { id: "3-1", title: "Create comparison spreadsheet", completed: true, priority: "medium" },
-    { id: "3-2", title: "Visit campus websites", completed: false, priority: "low" },
-    { id: "3-3", title: "Schedule virtual tours", completed: false, priority: "medium" },
-  ],
-  "4": [
-    { id: "4-1", title: "Build portfolio website", completed: false, priority: "medium" },
-    { id: "4-2", title: "Learn React Native", completed: false, priority: "low" },
-  ],
-}
 
 export async function GET(request: Request, { params }: { params: { nodeId: string } }) {
   try {
     const nodeId = params.nodeId
-    const nodeTasks = tasks[nodeId] || []
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    // Fetch tasks from Supabase
+    const { data: tasksData, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("node_id", nodeId)
+      .order("created_at", { ascending: true })
 
-    return NextResponse.json({ tasks: nodeTasks })
+    if (error) {
+      console.error("Supabase error:", error)
+      return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 })
+    }
+
+    // Transform database format to application format
+    const tasks: Task[] = tasksData.map((task) => ({
+      id: task.id,
+      title: task.title,
+      completed: task.completed,
+      priority: task.priority,
+      dueDate: task.due_date || undefined,
+      notes: task.notes || undefined,
+    }))
+
+    return NextResponse.json({ tasks })
   } catch (error) {
+    console.error("API error:", error)
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 })
   }
 }
@@ -45,19 +40,38 @@ export async function POST(request: Request, { params }: { params: { nodeId: str
     const nodeId = params.nodeId
     const newTask: Omit<Task, "id"> = await request.json()
 
-    const task: Task = {
-      ...newTask,
-      id: `${nodeId}-${Date.now()}`,
+    // Insert new task into Supabase
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({
+        node_id: nodeId,
+        title: newTask.title,
+        completed: newTask.completed || false,
+        priority: newTask.priority || "medium",
+        due_date: newTask.dueDate || null,
+        notes: newTask.notes || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      return NextResponse.json({ error: "Failed to create task" }, { status: 500 })
     }
 
-    if (!tasks[nodeId]) {
-      tasks[nodeId] = []
+    // Transform back to application format
+    const createdTask: Task = {
+      id: data.id,
+      title: data.title,
+      completed: data.completed,
+      priority: data.priority,
+      dueDate: data.due_date || undefined,
+      notes: data.notes || undefined,
     }
 
-    tasks[nodeId].push(task)
-
-    return NextResponse.json({ task }, { status: 201 })
+    return NextResponse.json({ task: createdTask }, { status: 201 })
   } catch (error) {
+    console.error("API error:", error)
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 })
   }
 }
