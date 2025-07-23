@@ -1,121 +1,68 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MindMapView } from "@/components/mind-map-view"
 import { TodoListView } from "@/components/todo-list-view"
 import { SplitView } from "@/components/split-view"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "next-themes"
+import { useNodes, useTasks } from "@/hooks/use-api"
 import type { Node, Task } from "@/types"
 
-const initialNodes: Node[] = [
-  {
-    id: "1",
-    title: "University Applications",
-    x: 400,
-    y: 200,
-    color: "#3B82F6",
-    icon: "🎓",
-    tasks: [
-      { id: "1-1", title: "Research colleges", completed: true, priority: "high" },
-      { id: "1-2", title: "Write personal statement", completed: false, priority: "high" },
-      { id: "1-3", title: "Get recommendation letters", completed: false, priority: "medium" },
-      { id: "1-4", title: "Submit applications", completed: false, priority: "high" },
-    ],
-    children: ["2", "3"],
-  },
-  {
-    id: "2",
-    title: "Personal Statement",
-    x: 200,
-    y: 350,
-    color: "#10B981",
-    icon: "📝",
-    tasks: [
-      { id: "2-1", title: "Brainstorm topics", completed: true, priority: "medium" },
-      { id: "2-2", title: "Write first draft", completed: false, priority: "high" },
-      { id: "2-3", title: "Get feedback", completed: false, priority: "medium" },
-      { id: "2-4", title: "Final revision", completed: false, priority: "high" },
-    ],
-    parent: "1",
-  },
-  {
-    id: "3",
-    title: "College Research",
-    x: 600,
-    y: 350,
-    color: "#F59E0B",
-    icon: "🔍",
-    tasks: [
-      { id: "3-1", title: "Create comparison spreadsheet", completed: true, priority: "medium" },
-      { id: "3-2", title: "Visit campus websites", completed: false, priority: "low" },
-      { id: "3-3", title: "Schedule virtual tours", completed: false, priority: "medium" },
-    ],
-    parent: "1",
-  },
-  {
-    id: "4",
-    title: "Side Projects",
-    x: 400,
-    y: 500,
-    color: "#8B5CF6",
-    icon: "💡",
-    tasks: [
-      { id: "4-1", title: "Build portfolio website", completed: false, priority: "medium" },
-      { id: "4-2", title: "Learn React Native", completed: false, priority: "low" },
-    ],
-  },
-]
-
 export default function Home() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes)
+  const { nodes, loading: nodesLoading, error: nodesError, createNode, updateNode } = useNodes()
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [viewMode, setViewMode] = useState<"mindmap" | "todo" | "split">("mindmap")
   const [focusMode, setFocusMode] = useState(false)
 
-  const updateNode = (nodeId: string, updates: Partial<Node>) => {
-    setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, ...updates } : node)))
-  }
+  // Fetch tasks for the selected node
+  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask } = useTasks(selectedNode?.id || null)
 
-  const addTask = (nodeId: string, task: Omit<Task, "id">) => {
-    const newTask: Task = {
-      ...task,
-      id: `${nodeId}-${Date.now()}`,
+  // Update selected node with fetched tasks
+  useEffect(() => {
+    if (selectedNode && tasks) {
+      setSelectedNode((prev) => (prev ? { ...prev, tasks } : null))
     }
+  }, [tasks, selectedNode]) // Updated dependency array
 
-    setNodes((prev) =>
-      prev.map((node) => (node.id === nodeId ? { ...node, tasks: [...(node.tasks || []), newTask] } : node)),
-    )
+  const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
+    try {
+      await updateNode(nodeId, updates)
+      // Update selected node if it's the one being updated
+      if (selectedNode?.id === nodeId) {
+        setSelectedNode((prev) => (prev ? { ...prev, ...updates } : null))
+      }
+    } catch (error) {
+      console.error("Failed to update node:", error)
+    }
   }
 
-  const updateTask = (nodeId: string, taskId: string, updates: Partial<Task>) => {
-    setNodes((prev) =>
-      prev.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              tasks: node.tasks?.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
-            }
-          : node,
-      ),
-    )
+  const handleAddTask = async (nodeId: string, task: Omit<Task, "id">) => {
+    try {
+      await createTask(nodeId, task)
+    } catch (error) {
+      console.error("Failed to add task:", error)
+    }
   }
 
-  const deleteTask = (nodeId: string, taskId: string) => {
-    setNodes((prev) =>
-      prev.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              tasks: node.tasks?.filter((task) => task.id !== taskId),
-            }
-          : node,
-      ),
-    )
+  const handleUpdateTask = async (nodeId: string, taskId: string, updates: Partial<Task>) => {
+    try {
+      await updateTask(nodeId, taskId, updates)
+    } catch (error) {
+      console.error("Failed to update task:", error)
+    }
   }
 
-  const addNode = (parentId?: string) => {
+  const handleDeleteTask = async (nodeId: string, taskId: string) => {
+    try {
+      await deleteTask(nodeId, taskId)
+    } catch (error) {
+      console.error("Failed to delete task:", error)
+    }
+  }
+
+  const handleAddNode = async (parentId?: string) => {
     const newNode: Node = {
       id: Date.now().toString(),
       title: "New Node",
@@ -123,19 +70,41 @@ export default function Home() {
       y: Math.random() * 400 + 100,
       color: "#6B7280",
       icon: "📋",
-      tasks: [],
       parent: parentId,
     }
 
-    setNodes((prev) => {
-      const updated = [...prev, newNode]
-      if (parentId) {
-        return updated.map((node) =>
-          node.id === parentId ? { ...node, children: [...(node.children || []), newNode.id] } : node,
-        )
-      }
-      return updated
-    })
+    try {
+      await createNode(newNode)
+    } catch (error) {
+      console.error("Failed to add node:", error)
+    }
+  }
+
+  if (nodesLoading) {
+    return (
+      <ThemeProvider>
+        <div className="h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your mind map...</p>
+          </div>
+        </div>
+      </ThemeProvider>
+    )
+  }
+
+  if (nodesError) {
+    return (
+      <ThemeProvider>
+        <div className="h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-500 text-4xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
+            <p className="text-muted-foreground">{nodesError}</p>
+          </div>
+        </div>
+      </ThemeProvider>
+    )
   }
 
   return (
@@ -150,7 +119,7 @@ export default function Home() {
         />
 
         <div className="flex-1 flex">
-          <Sidebar nodes={nodes} selectedNode={selectedNode} onSelectNode={setSelectedNode} onAddNode={addNode} />
+          <Sidebar nodes={nodes} selectedNode={selectedNode} onSelectNode={setSelectedNode} onAddNode={handleAddNode} />
 
           <main className="flex-1">
             {viewMode === "mindmap" && (
@@ -158,19 +127,20 @@ export default function Home() {
                 nodes={nodes}
                 selectedNode={selectedNode}
                 onSelectNode={setSelectedNode}
-                onUpdateNode={updateNode}
-                onAddNode={addNode}
+                onUpdateNode={handleUpdateNode}
+                onAddNode={handleAddNode}
               />
             )}
 
             {viewMode === "todo" && selectedNode && (
               <TodoListView
                 node={selectedNode}
-                onUpdateNode={updateNode}
-                onAddTask={addTask}
-                onUpdateTask={updateTask}
-                onDeleteTask={deleteTask}
+                onUpdateNode={handleUpdateNode}
+                onAddTask={handleAddTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
                 focusMode={focusMode}
+                loading={tasksLoading}
               />
             )}
 
@@ -179,11 +149,12 @@ export default function Home() {
                 nodes={nodes}
                 selectedNode={selectedNode}
                 onSelectNode={setSelectedNode}
-                onUpdateNode={updateNode}
-                onAddTask={addTask}
-                onUpdateTask={updateTask}
-                onDeleteTask={deleteTask}
-                onAddNode={addNode}
+                onUpdateNode={handleUpdateNode}
+                onAddTask={handleAddTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onAddNode={handleAddNode}
+                tasksLoading={tasksLoading}
               />
             )}
           </main>

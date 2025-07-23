@@ -13,6 +13,7 @@ interface SplitViewProps {
   onUpdateTask: (nodeId: string, taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (nodeId: string, taskId: string) => void
   onAddNode: (parentId?: string) => void
+  tasksLoading?: boolean
 }
 
 export function SplitView({
@@ -24,6 +25,7 @@ export function SplitView({
   onUpdateTask,
   onDeleteTask,
   onAddNode,
+  tasksLoading,
 }: SplitViewProps) {
   return (
     <div className="h-full flex">
@@ -47,6 +49,7 @@ export function SplitView({
             onAddTask={onAddTask}
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}
+            loading={tasksLoading}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-muted-foreground">

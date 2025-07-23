@@ -19,6 +19,7 @@ interface TodoListViewProps {
   onUpdateTask: (nodeId: string, taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (nodeId: string, taskId: string) => void
   focusMode?: boolean
+  loading?: boolean
 }
 
 export function TodoListView({
@@ -28,6 +29,7 @@ export function TodoListView({
   onUpdateTask,
   onDeleteTask,
   focusMode = false,
+  loading = false,
 }: TodoListViewProps) {
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium")
@@ -131,7 +133,12 @@ export function TodoListView({
 
         {/* Tasks List */}
         <div className="flex-1 overflow-auto">
-          {node.tasks && node.tasks.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading tasks...</p>
+            </div>
+          ) : node.tasks && node.tasks.length > 0 ? (
             <div className="space-y-2">
               {node.tasks.map((task) => (
                 <div
