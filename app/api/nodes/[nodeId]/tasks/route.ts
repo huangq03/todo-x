@@ -4,7 +4,7 @@ import type { Task } from "@/types"
 
 export async function GET(request: Request, { params }: { params: { nodeId: string } }) {
   try {
-    const nodeId = params.nodeId
+    const { nodeId } = await params
 
     // Fetch tasks from Supabase
     const { data: tasksData, error } = await supabase
@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: { nodeId: stri
     }
 
     // Transform database format to application format
-    const tasks: Task[] = tasksData.map((task) => ({
+    const tasks: Task[] = tasksData.map((task: { id: any; title: any; completed: any; priority: any; due_date: any; notes: any }) => ({
       id: task.id,
       title: task.title,
       completed: task.completed,
@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: { params: { nodeId: stri
 
 export async function POST(request: Request, { params }: { params: { nodeId: string } }) {
   try {
-    const nodeId = params.nodeId
+    const { nodeId } = await params
     const newTask: Omit<Task, "id"> = await request.json()
 
     // Insert new task into Supabase

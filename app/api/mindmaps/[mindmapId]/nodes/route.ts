@@ -112,7 +112,7 @@ const nodesByMindmap: Record<string, Node[]> = {
 
 export async function GET(request: Request, { params }: { params: { mindmapId: string } }) {
   try {
-    const mindmapId = params.mindmapId
+    const { mindmapId } = await params
     const nodes = nodesByMindmap[mindmapId] || []
 
     // Simulate API delay
@@ -126,7 +126,7 @@ export async function GET(request: Request, { params }: { params: { mindmapId: s
 
 export async function POST(request: Request, { params }: { params: { mindmapId: string } }) {
   try {
-    const mindmapId = params.mindmapId
+    const { mindmapId } = await params
     const newNode: Node = await request.json()
 
     if (!nodesByMindmap[mindmapId]) {
@@ -155,7 +155,8 @@ export async function POST(request: Request, { params }: { params: { mindmapId: 
 
 export async function PUT(request: Request, { params }: { params: { mindmapId: string } }) {
   try {
-    const mindmapId = params.mindmapId
+    const { mindmapId } = await params
+    
     const { id, updates }: { id: string; updates: Partial<Node> } = await request.json()
 
     if (!nodesByMindmap[mindmapId]) {

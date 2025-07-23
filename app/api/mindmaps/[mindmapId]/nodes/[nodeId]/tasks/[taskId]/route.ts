@@ -62,7 +62,7 @@ export async function PUT(
   { params }: { params: { mindmapId: string; nodeId: string; taskId: string } },
 ) {
   try {
-    const { mindmapId, nodeId, taskId } = params
+    const { mindmapId, nodeId, taskId } = await params
     const updates: Partial<Task> = await request.json()
 
     if (!tasksByMindmapAndNode[mindmapId]?.[nodeId]) {
@@ -90,7 +90,7 @@ export async function DELETE(
   { params }: { params: { mindmapId: string; nodeId: string; taskId: string } },
 ) {
   try {
-    const { mindmapId, nodeId, taskId } = params
+    const { mindmapId, nodeId, taskId } = await params
 
     if (!tasksByMindmapAndNode[mindmapId]?.[nodeId]) {
       return NextResponse.json({ error: "Node not found" }, { status: 404 })

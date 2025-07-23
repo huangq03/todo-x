@@ -59,7 +59,7 @@ const tasksByMindmapAndNode: Record<string, Record<string, Task[]>> = {
 
 export async function GET(request: Request, { params }: { params: { mindmapId: string; nodeId: string } }) {
   try {
-    const { mindmapId, nodeId } = params
+    const { mindmapId, nodeId } = await params
     const tasks = tasksByMindmapAndNode[mindmapId]?.[nodeId] || []
 
     // Simulate API delay
@@ -73,7 +73,7 @@ export async function GET(request: Request, { params }: { params: { mindmapId: s
 
 export async function POST(request: Request, { params }: { params: { mindmapId: string; nodeId: string } }) {
   try {
-    const { mindmapId, nodeId } = params
+    const { mindmapId, nodeId } = await params
     const newTask: Omit<Task, "id"> = await request.json()
 
     const task: Task = {

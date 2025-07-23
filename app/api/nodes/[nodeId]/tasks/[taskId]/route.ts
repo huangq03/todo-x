@@ -4,7 +4,7 @@ import type { Task } from "@/types"
 
 export async function PUT(request: Request, { params }: { params: { nodeId: string; taskId: string } }) {
   try {
-    const { taskId } = params
+    const { taskId } = await params
     const updates: Partial<Task> = await request.json()
 
     // Transform application format to database format
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: { params: { nodeId: stri
 
 export async function DELETE(request: Request, { params }: { params: { nodeId: string; taskId: string } }) {
   try {
-    const { taskId } = params
+    const { taskId } = await params
 
     const { error } = await supabase.from("tasks").delete().eq("id", taskId)
 
