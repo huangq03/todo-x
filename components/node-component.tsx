@@ -29,15 +29,11 @@ export function NodeComponent({
   const nodeRef = useRef<HTMLDivElement>(null)
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Only handle left mouse button (button 0)
+    if (e.button !== 0) return
+
     e.stopPropagation()
     setIsDragging(true)
-    const rect = nodeRef.current?.getBoundingClientRect()
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      })
-    }
   }
 
   // Use useEffect to properly handle global mouse events
@@ -87,35 +83,6 @@ export function NodeComponent({
       onClick={onClick}
       onMouseDown={handleMouseDown}
     >
-      {/* Progress Ring */}
-      {taskCount > 0 && (
-        <div className="absolute -inset-2">
-          <svg className="w-full h-full" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="text-gray-200 dark:text-gray-700"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke={node.color}
-              strokeWidth="3"
-              strokeDasharray={`${completionPercentage * 2.83} 283`}
-              strokeLinecap="round"
-              className="transition-all duration-500"
-              transform="rotate(-90 50 50)"
-            />
-          </svg>
-        </div>
-      )}
-
       {/* Node */}
       <div
         className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-lg border-2 transition-all duration-200 min-w-[120px] max-w-[200px] ${
