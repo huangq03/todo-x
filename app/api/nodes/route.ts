@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     // Transform database format to application format
-    const nodes: Node[] = nodesData.map((node: { id: any; title: any; x: any; y: any; color: any; icon: any; parent_id: any; notes: any }) => ({
+    const nodes: Node[] = nodesData.map((node) => ({
       id: node.id,
       title: node.title,
       x: node.x,

@@ -156,7 +156,6 @@ export async function POST(request: Request, { params }: { params: { mindmapId: 
 export async function PUT(request: Request, { params }: { params: { mindmapId: string } }) {
   try {
     const { mindmapId } = await params
-    
     const { id, updates }: { id: string; updates: Partial<Node> } = await request.json()
 
     if (!nodesByMindmap[mindmapId]) {
