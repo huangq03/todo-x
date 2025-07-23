@@ -34,6 +34,13 @@ export function NodeComponent({
 
     e.stopPropagation()
     setIsDragging(true)
+    const rect = nodeRef.current?.getBoundingClientRect()
+    if (rect) {
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      })
+    }
   }
 
   // Use useEffect to properly handle global mouse events

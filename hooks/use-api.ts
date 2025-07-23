@@ -140,3 +140,78 @@ export function useTasks(nodeId: string | null) {
 
   return { tasks, loading, error, createTask, updateTask, deleteTask }
 }
+
+export function useAllNodeTasks(nodes: Node[]) {
+  const [nodeTasks, setNodeTasks] = useState<Record<string, Task[]>>({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchAllTasks = async () => {
+    if (nodes.length === 0) return
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Fetch tasks for all nodes in parallel
+      const taskPromises = nodes.map(async (node) => {
+        const response = await fetch(`/api/nodes/${node.id}/tasks`)
+        if (!response.ok) throw new Error(`Failed to fetch tasks for node ${node.id}`)
+        const data = await response.json()
+        return { nodeId: node.id, tasks: data.tasks }
+      })
+
+      const results = await Promise.all(taskPromises)
+
+      // Convert array to object for easy lookup
+      const tasksMap = results.reduce(
+        (acc, { nodeId, tasks }) => {
+          acc[nodeId] = tasks
+          return acc
+        },
+        {} as Record<string, Task[]>,
+      )
+
+      setNodeTasks(tasksMap)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch tasks")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateNodeTask = (nodeId: string, taskId: string, updates: Partial<Task>) => {
+    setNodeTasks((prev) => ({
+      ...prev,
+      [nodeId]: prev[nodeId]?.map((task) => (task.id === taskId ? { ...task, ...updates } : task)) || [],
+    }))
+  }
+
+  const addNodeTask = (nodeId: string, task: Task) => {
+    setNodeTasks((prev) => ({
+      ...prev,
+      [nodeId]: [...(prev[nodeId] || []), task],
+    }))
+  }
+
+  const removeNodeTask = (nodeId: string, taskId: string) => {
+    setNodeTasks((prev) => ({
+      ...prev,
+      [nodeId]: prev[nodeId]?.filter((task) => task.id !== taskId) || [],
+    }))
+  }
+
+  useEffect(() => {
+    fetchAllTasks()
+  }, [nodes.length]) // Re-fetch when nodes change
+
+  return {
+    nodeTasks,
+    loading,
+    error,
+    updateNodeTask,
+    addNodeTask,
+    removeNodeTask,
+    refetch: fetchAllTasks,
+  }
+}

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { MindMapView } from "@/components/mind-map-view"
 import { TodoListView } from "@/components/todo-list-view"
 import { SplitView } from "@/components/split-view"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "next-themes"
-import { useNodes, useTasks } from "@/hooks/use-api"
+import { useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
 import type { Node, Task } from "@/types"
 
 export default function Home() {
@@ -16,15 +16,41 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"mindmap" | "todo" | "split">("mindmap")
   const [focusMode, setFocusMode] = useState(false)
 
-  // Fetch tasks for the selected node
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask } = useTasks(selectedNode?.id || null)
+  // Fetch all tasks for all nodes automatically
+  const {
+    nodeTasks,
+    loading: allTasksLoading,
+    error: allTasksError,
+    updateNodeTask,
+    addNodeTask,
+    removeNodeTask,
+  } = useAllNodeTasks(nodes)
 
-  // Update selected node with fetched tasks
-  useEffect(() => {
-    if (selectedNode && tasks) {
-      setSelectedNode((prev) => (prev ? { ...prev, tasks } : null))
+  // Fetch tasks for the selected node (for real-time updates)
+  const {
+    tasks: selectedNodeTasks,
+    loading: selectedTasksLoading,
+    createTask,
+    updateTask,
+    deleteTask,
+  } = useTasks(selectedNode?.id || null)
+
+  // Create enriched nodes with their tasks
+  const enrichedNodes = useMemo(() => {
+    return nodes.map((node) => ({
+      ...node,
+      tasks: nodeTasks[node.id] || [],
+    }))
+  }, [nodes, nodeTasks])
+
+  // Update selected node with its tasks
+  const enrichedSelectedNode = useMemo(() => {
+    if (!selectedNode) return null
+    return {
+      ...selectedNode,
+      tasks: selectedNodeTasks || nodeTasks[selectedNode.id] || [],
     }
-  }, [tasks, selectedNode]) // Updated dependency array
+  }, [selectedNode, selectedNodeTasks, nodeTasks])
 
   const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
     try {
@@ -40,7 +66,9 @@ export default function Home() {
 
   const handleAddTask = async (nodeId: string, task: Omit<Task, "id">) => {
     try {
-      await createTask(nodeId, task)
+      const newTask = await createTask(nodeId, task)
+      // Update the all tasks cache
+      addNodeTask(nodeId, newTask)
     } catch (error) {
       console.error("Failed to add task:", error)
     }
@@ -48,7 +76,9 @@ export default function Home() {
 
   const handleUpdateTask = async (nodeId: string, taskId: string, updates: Partial<Task>) => {
     try {
-      await updateTask(nodeId, taskId, updates)
+      const updatedTask = await updateTask(nodeId, taskId, updates)
+      // Update the all tasks cache
+      updateNodeTask(nodeId, taskId, updates)
     } catch (error) {
       console.error("Failed to update task:", error)
     }
@@ -57,6 +87,8 @@ export default function Home() {
   const handleDeleteTask = async (nodeId: string, taskId: string) => {
     try {
       await deleteTask(nodeId, taskId)
+      // Update the all tasks cache
+      removeNodeTask(nodeId, taskId)
     } catch (error) {
       console.error("Failed to delete task:", error)
     }
@@ -80,27 +112,31 @@ export default function Home() {
     }
   }
 
-  if (nodesLoading) {
+  const isLoading = nodesLoading || allTasksLoading
+  const hasError = nodesError || allTasksError
+
+  if (isLoading) {
     return (
       <ThemeProvider>
         <div className="h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading your mind map...</p>
+            {allTasksLoading && <p className="text-sm text-muted-foreground mt-2">Fetching tasks...</p>}
           </div>
         </div>
       </ThemeProvider>
     )
   }
 
-  if (nodesError) {
+  if (hasError) {
     return (
       <ThemeProvider>
         <div className="h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-500 text-4xl mb-4">⚠️</div>
             <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
-            <p className="text-muted-foreground">{nodesError}</p>
+            <p className="text-muted-foreground">{nodesError || allTasksError}</p>
           </div>
         </div>
       </ThemeProvider>
@@ -115,46 +151,51 @@ export default function Home() {
           setViewMode={setViewMode}
           focusMode={focusMode}
           setFocusMode={setFocusMode}
-          selectedNode={selectedNode}
+          selectedNode={enrichedSelectedNode}
         />
 
         <div className="flex-1 flex">
-          <Sidebar nodes={nodes} selectedNode={selectedNode} onSelectNode={setSelectedNode} onAddNode={handleAddNode} />
+          <Sidebar
+            nodes={enrichedNodes}
+            selectedNode={enrichedSelectedNode}
+            onSelectNode={setSelectedNode}
+            onAddNode={handleAddNode}
+          />
 
           <main className="flex-1">
             {viewMode === "mindmap" && (
               <MindMapView
-                nodes={nodes}
-                selectedNode={selectedNode}
+                nodes={enrichedNodes}
+                selectedNode={enrichedSelectedNode}
                 onSelectNode={setSelectedNode}
                 onUpdateNode={handleUpdateNode}
                 onAddNode={handleAddNode}
               />
             )}
 
-            {viewMode === "todo" && selectedNode && (
+            {viewMode === "todo" && enrichedSelectedNode && (
               <TodoListView
-                node={selectedNode}
+                node={enrichedSelectedNode}
                 onUpdateNode={handleUpdateNode}
                 onAddTask={handleAddTask}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 focusMode={focusMode}
-                loading={tasksLoading}
+                loading={selectedTasksLoading}
               />
             )}
 
             {viewMode === "split" && (
               <SplitView
-                nodes={nodes}
-                selectedNode={selectedNode}
+                nodes={enrichedNodes}
+                selectedNode={enrichedSelectedNode}
                 onSelectNode={setSelectedNode}
                 onUpdateNode={handleUpdateNode}
                 onAddTask={handleAddTask}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 onAddNode={handleAddNode}
-                tasksLoading={tasksLoading}
+                tasksLoading={selectedTasksLoading}
               />
             )}
           </main>
