@@ -18,4 +18,15 @@ export interface Node {
   children?: string[]
   parent?: string
   notes?: string
+  mindmapId: string
+}
+
+export interface MindMap {
+  id: string
+  title: string
+  description?: string
+  color: string
+  icon: string
+  createdAt: string
+  updatedAt: string
 }

@@ -75,6 +75,7 @@ export async function POST(request: Request) {
       icon: data.icon,
       parent: data.parent_id || undefined,
       notes: data.notes || undefined,
+      mindmapId: data.mindmap_id,
     }
 
     return NextResponse.json({ node: createdNode }, { status: 201 })
@@ -115,6 +116,7 @@ export async function PUT(request: Request) {
       icon: data.icon,
       parent: data.parent_id || undefined,
       notes: data.notes || undefined,
+      mindmapId: data.mindmap_id,
     }
 
     return NextResponse.json({ node: updatedNode })

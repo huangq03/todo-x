@@ -7,14 +7,30 @@ import { SplitView } from "@/components/split-view"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "next-themes"
-import { useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
-import type { Node, Task } from "@/types"
+import { useMindMaps, useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
+import type { Node, Task, MindMap } from "@/types"
 
 export default function Home() {
-  const { nodes, loading: nodesLoading, error: nodesError, createNode, updateNode } = useNodes()
+  const { mindmaps, loading: mindmapsLoading, error: mindmapsError, createMindMap } = useMindMaps()
+  const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [viewMode, setViewMode] = useState<"mindmap" | "todo" | "split">("mindmap")
   const [focusMode, setFocusMode] = useState(false)
+
+  // Auto-select first mindmap when mindmaps load
+  useMemo(() => {
+    if (mindmaps.length > 0 && !selectedMindMap) {
+      setSelectedMindMap(mindmaps[0])
+    }
+  }, [mindmaps, selectedMindMap])
+
+  const {
+    nodes,
+    loading: nodesLoading,
+    error: nodesError,
+    createNode,
+    updateNode,
+  } = useNodes(selectedMindMap?.id || null)
 
   // Fetch all tasks for all nodes automatically
   const {
@@ -24,7 +40,7 @@ export default function Home() {
     updateNodeTask,
     addNodeTask,
     removeNodeTask,
-  } = useAllNodeTasks(nodes)
+  } = useAllNodeTasks(selectedMindMap?.id || null, nodes)
 
   // Fetch tasks for the selected node (for real-time updates)
   const {
@@ -33,7 +49,7 @@ export default function Home() {
     createTask,
     updateTask,
     deleteTask,
-  } = useTasks(selectedNode?.id || null)
+  } = useTasks(selectedMindMap?.id || null, selectedNode?.id || null)
 
   // Create enriched nodes with their tasks
   const enrichedNodes = useMemo(() => {
@@ -52,9 +68,30 @@ export default function Home() {
     }
   }, [selectedNode, selectedNodeTasks, nodeTasks])
 
-  const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
+  const handleSelectMindMap = (mindmap: MindMap) => {
+    setSelectedMindMap(mindmap)
+    setSelectedNode(null) // Clear selected node when switching mind maps
+  }
+
+  const handleCreateMindMap = async () => {
     try {
-      await updateNode(nodeId, updates)
+      const newMindMap = await createMindMap({
+        title: "New Mind Map",
+        description: "A new mind map for organizing thoughts",
+        color: "#6B7280",
+        icon: "🧠",
+      })
+      setSelectedMindMap(newMindMap)
+    } catch (error) {
+      console.error("Failed to create mind map:", error)
+    }
+  }
+
+  const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
+    if (!selectedMindMap) return
+
+    try {
+      await updateNode(selectedMindMap.id, nodeId, updates)
       // Update selected node if it's the one being updated
       if (selectedNode?.id === nodeId) {
         setSelectedNode((prev) => (prev ? { ...prev, ...updates } : null))
@@ -65,8 +102,10 @@ export default function Home() {
   }
 
   const handleAddTask = async (nodeId: string, task: Omit<Task, "id">) => {
+    if (!selectedMindMap) return
+
     try {
-      const newTask = await createTask(nodeId, task)
+      const newTask = await createTask(selectedMindMap.id, nodeId, task)
       // Update the all tasks cache
       addNodeTask(nodeId, newTask)
     } catch (error) {
@@ -75,8 +114,10 @@ export default function Home() {
   }
 
   const handleUpdateTask = async (nodeId: string, taskId: string, updates: Partial<Task>) => {
+    if (!selectedMindMap) return
+
     try {
-      const updatedTask = await updateTask(nodeId, taskId, updates)
+      await updateTask(selectedMindMap.id, nodeId, taskId, updates)
       // Update the all tasks cache
       updateNodeTask(nodeId, taskId, updates)
     } catch (error) {
@@ -85,8 +126,10 @@ export default function Home() {
   }
 
   const handleDeleteTask = async (nodeId: string, taskId: string) => {
+    if (!selectedMindMap) return
+
     try {
-      await deleteTask(nodeId, taskId)
+      await deleteTask(selectedMindMap.id, nodeId, taskId)
       // Update the all tasks cache
       removeNodeTask(nodeId, taskId)
     } catch (error) {
@@ -95,6 +138,8 @@ export default function Home() {
   }
 
   const handleAddNode = async (parentId?: string) => {
+    if (!selectedMindMap) return
+
     const newNode: Node = {
       id: Date.now().toString(),
       title: "New Node",
@@ -103,17 +148,18 @@ export default function Home() {
       color: "#6B7280",
       icon: "📋",
       parent: parentId,
+      mindmapId: selectedMindMap.id,
     }
 
     try {
-      await createNode(newNode)
+      await createNode(selectedMindMap.id, newNode)
     } catch (error) {
       console.error("Failed to add node:", error)
     }
   }
 
-  const isLoading = nodesLoading || allTasksLoading
-  const hasError = nodesError || allTasksError
+  const isLoading = mindmapsLoading || nodesLoading || allTasksLoading
+  const hasError = mindmapsError || nodesError || allTasksError
 
   if (isLoading) {
     return (
@@ -121,7 +167,7 @@ export default function Home() {
         <div className="h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your mind map...</p>
+            <p className="text-muted-foreground">Loading your mind maps...</p>
             {allTasksLoading && <p className="text-sm text-muted-foreground mt-2">Fetching tasks...</p>}
           </div>
         </div>
@@ -136,7 +182,7 @@ export default function Home() {
           <div className="text-center">
             <div className="text-red-500 text-4xl mb-4">⚠️</div>
             <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
-            <p className="text-muted-foreground">{nodesError || allTasksError}</p>
+            <p className="text-muted-foreground">{mindmapsError || nodesError || allTasksError}</p>
           </div>
         </div>
       </ThemeProvider>
@@ -152,10 +198,15 @@ export default function Home() {
           focusMode={focusMode}
           setFocusMode={setFocusMode}
           selectedNode={enrichedSelectedNode}
+          selectedMindMap={selectedMindMap}
         />
 
         <div className="flex-1 flex">
           <Sidebar
+            mindmaps={mindmaps}
+            selectedMindMap={selectedMindMap}
+            onSelectMindMap={handleSelectMindMap}
+            onCreateMindMap={handleCreateMindMap}
             nodes={enrichedNodes}
             selectedNode={enrichedSelectedNode}
             onSelectNode={setSelectedNode}
@@ -163,40 +214,52 @@ export default function Home() {
           />
 
           <main className="flex-1">
-            {viewMode === "mindmap" && (
-              <MindMapView
-                nodes={enrichedNodes}
-                selectedNode={enrichedSelectedNode}
-                onSelectNode={setSelectedNode}
-                onUpdateNode={handleUpdateNode}
-                onAddNode={handleAddNode}
-              />
-            )}
+            {!selectedMindMap ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🗺️</div>
+                  <h3 className="text-xl font-medium mb-2">Welcome to MindTask</h3>
+                  <p className="mb-4">Select a mind map from the sidebar to get started</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {viewMode === "mindmap" && (
+                  <MindMapView
+                    nodes={enrichedNodes}
+                    selectedNode={enrichedSelectedNode}
+                    onSelectNode={setSelectedNode}
+                    onUpdateNode={handleUpdateNode}
+                    onAddNode={handleAddNode}
+                  />
+                )}
 
-            {viewMode === "todo" && enrichedSelectedNode && (
-              <TodoListView
-                node={enrichedSelectedNode}
-                onUpdateNode={handleUpdateNode}
-                onAddTask={handleAddTask}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                focusMode={focusMode}
-                loading={selectedTasksLoading}
-              />
-            )}
+                {viewMode === "todo" && enrichedSelectedNode && (
+                  <TodoListView
+                    node={enrichedSelectedNode}
+                    onUpdateNode={handleUpdateNode}
+                    onAddTask={handleAddTask}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    focusMode={focusMode}
+                    loading={selectedTasksLoading}
+                  />
+                )}
 
-            {viewMode === "split" && (
-              <SplitView
-                nodes={enrichedNodes}
-                selectedNode={enrichedSelectedNode}
-                onSelectNode={setSelectedNode}
-                onUpdateNode={handleUpdateNode}
-                onAddTask={handleAddTask}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onAddNode={handleAddNode}
-                tasksLoading={selectedTasksLoading}
-              />
+                {viewMode === "split" && (
+                  <SplitView
+                    nodes={enrichedNodes}
+                    selectedNode={enrichedSelectedNode}
+                    onSelectNode={setSelectedNode}
+                    onUpdateNode={handleUpdateNode}
+                    onAddTask={handleAddTask}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onAddNode={handleAddNode}
+                    tasksLoading={selectedTasksLoading}
+                  />
+                )}
+              </>
             )}
           </main>
         </div>

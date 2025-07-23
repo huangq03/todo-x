@@ -1,6 +1,6 @@
 "use client"
 
-import type { Node } from "@/types"
+import type { Node, MindMap } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Brain, CheckSquare, SplitSquareHorizontal, Focus, Settings, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -11,9 +11,10 @@ interface HeaderProps {
   focusMode: boolean
   setFocusMode: (focus: boolean) => void
   selectedNode: Node | null
+  selectedMindMap: MindMap | null
 }
 
-export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selectedNode }: HeaderProps) {
+export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selectedNode, selectedMindMap }: HeaderProps) {
   const { theme, setTheme } = useTheme()
 
   return (
@@ -26,7 +27,9 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
           </div>
           <div>
             <h1 className="font-bold text-lg">MindTask</h1>
-            <p className="text-xs text-muted-foreground">Visual Productivity</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedMindMap ? `${selectedMindMap.title}` : "Visual Productivity"}
+            </p>
           </div>
         </div>
 
@@ -38,6 +41,7 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
               size="sm"
               onClick={() => setViewMode("mindmap")}
               className="gap-2"
+              disabled={!selectedMindMap}
             >
               <Brain className="h-4 w-4" />
               Mind Map
@@ -57,6 +61,7 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
               size="sm"
               onClick={() => setViewMode("split")}
               className="gap-2"
+              disabled={!selectedMindMap}
             >
               <SplitSquareHorizontal className="h-4 w-4" />
               Split
@@ -71,6 +76,7 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
             size="sm"
             onClick={() => setFocusMode(!focusMode)}
             className="gap-2"
+            disabled={!selectedNode}
           >
             <Focus className="h-4 w-4" />
             Focus
