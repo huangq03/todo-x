@@ -12,7 +12,6 @@ interface NodeComponentProps {
   isSelected: boolean
   completionPercentage: number
   onClick: () => void
-  onDoubleClick: () => void
   onUpdatePosition: (x: number, y: number) => void
   onAddChild: () => void
 }
@@ -22,7 +21,6 @@ export function NodeComponent({
   isSelected,
   completionPercentage,
   onClick,
-  onDoubleClick,
   onUpdatePosition,
   onAddChild,
 }: NodeComponentProps) {
@@ -48,9 +46,11 @@ export function NodeComponent({
     }
   }
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onDoubleClick()
+    if (!isDragging) {
+      onClick()
+    }
   }
 
   // Use useEffect to properly handle global mouse events
@@ -97,8 +97,7 @@ export function NodeComponent({
         top: node.y,
         transform: "translate(-50%, -50%)",
       }}
-      onClick={onClick}
-      onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
       onMouseDown={handleMouseDown}
     >
       {/* Node */}
@@ -122,12 +121,12 @@ export function NodeComponent({
           {taskCount > 0 && (
             <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
               {completedTasks}/{taskCount} tasks
-              <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Double-click for details</div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Click to view details</div>
             </div>
           )}
           {taskCount === 0 && (
             <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
-              <div className="text-xs text-gray-400 dark:text-gray-500">Double-click to add tasks</div>
+              <div className="text-xs text-gray-400 dark:text-gray-500">Click to add tasks</div>
             </div>
           )}
         </div>

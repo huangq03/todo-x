@@ -43,6 +43,15 @@ export default function Home() {
     }))
   }, [nodes, nodeTasks])
 
+  // Create enriched selected node with its tasks
+  const enrichedSelectedNode = useMemo(() => {
+    if (!selectedNode) return null
+    return {
+      ...selectedNode,
+      tasks: nodeTasks[selectedNode.id] || [],
+    }
+  }, [selectedNode, nodeTasks])
+
   // Create enriched task modal node with its tasks
   const enrichedTaskModalNode = useMemo(() => {
     if (!taskModalNode) return null
@@ -73,9 +82,11 @@ export default function Home() {
     }
   }
 
-  const handleAddTask = async (mindmapId: string, nodeId: string, task: Omit<Task, "id">) => {
+  const handleAddTask = async (nodeId: string, task: Omit<Task, "id">) => {
+    if (!selectedMindMap) return
+
     try {
-      const newTask = await createTask(mindmapId, nodeId, task)
+      const newTask = await createTask(selectedMindMap.id, nodeId, task)
       // Update the all tasks cache
       addNodeTask(nodeId, newTask)
       return newTask
@@ -165,10 +176,12 @@ export default function Home() {
           <MindMapDisplay
             mindmap={selectedMindMap}
             nodes={enrichedNodes}
-            selectedNode={selectedNode}
+            selectedNode={enrichedSelectedNode}
             onSelectNode={setSelectedNode}
             onUpdateNode={handleUpdateNode}
-            onNodeDoubleClick={handleNodeDoubleClick}
+            onAddTask={handleAddTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
             isGenerating={isGenerating}
           />
         ) : (
@@ -187,7 +200,7 @@ export default function Home() {
         node={enrichedTaskModalNode}
         isOpen={!!taskModalNode}
         onClose={() => setTaskModalNode(null)}
-        onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
+        onAddTask={(nodeId, task) => handleAddTask(nodeId, task)}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
       />
