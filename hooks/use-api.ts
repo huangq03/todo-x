@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { Node, Task, MindMap } from "@/types"
+import { getApiUrl } from "@/lib/api-config"
 
 // Hook for managing mind maps
 export function useMindMaps() {
@@ -12,7 +13,7 @@ export function useMindMaps() {
   const fetchMindMaps = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/mindmaps")
+      const response = await fetch(getApiUrl("/mindmaps"))
       if (!response.ok) throw new Error("Failed to fetch mind maps")
       const data = await response.json()
       setMindmaps(data.mindmaps)
@@ -25,7 +26,7 @@ export function useMindMaps() {
 
   const createMindMap = async (mindmap: Omit<MindMap, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const response = await fetch("/api/mindmaps", {
+      const response = await fetch(getApiUrl("/mindmaps"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mindmap),
@@ -42,7 +43,7 @@ export function useMindMaps() {
 
   const updateMindMap = async (mindmapId: string, updates: Partial<MindMap>) => {
     try {
-      const response = await fetch("/api/mindmaps", {
+      const response = await fetch(getApiUrl("/mindmaps"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: mindmapId, updates }),
@@ -59,7 +60,7 @@ export function useMindMaps() {
 
   const deleteMindMap = async (mindmapId: string) => {
     try {
-      const response = await fetch("/api/mindmaps", {
+      const response = await fetch(getApiUrl("/mindmaps"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: mindmapId }),
@@ -88,7 +89,7 @@ export function useNodes(mindmapId: string | null) {
   const fetchNodes = async (id: string) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/mindmaps/${id}/nodes`)
+      const response = await fetch(getApiUrl(`/mindmaps/${id}/nodes`))
       if (!response.ok) throw new Error("Failed to fetch nodes")
       const data = await response.json()
       setNodes(data.nodes)
@@ -101,7 +102,7 @@ export function useNodes(mindmapId: string | null) {
 
   const createNode = async (mindmapId: string, node: Node) => {
     try {
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes`, {
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(node),
@@ -118,7 +119,7 @@ export function useNodes(mindmapId: string | null) {
 
   const updateNode = async (mindmapId: string, nodeId: string, updates: Partial<Node>) => {
     try {
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes`, {
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: nodeId, updates }),
@@ -153,7 +154,7 @@ export function useTasks(mindmapId: string | null, nodeId: string | null) {
   const fetchTasks = async (mindmapId: string, nodeId: string) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes/${nodeId}/tasks`)
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes/${nodeId}/tasks`))
       if (!response.ok) throw new Error("Failed to fetch tasks")
       const data = await response.json()
       setTasks(data.tasks)
@@ -166,7 +167,7 @@ export function useTasks(mindmapId: string | null, nodeId: string | null) {
 
   const createTask = async (mindmapId: string, nodeId: string, task: Omit<Task, "id">) => {
     try {
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes/${nodeId}/tasks`, {
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes/${nodeId}/tasks`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(task),
@@ -183,7 +184,7 @@ export function useTasks(mindmapId: string | null, nodeId: string | null) {
 
   const updateTask = async (mindmapId: string, nodeId: string, taskId: string, updates: Partial<Task>) => {
     try {
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes/${nodeId}/tasks/${taskId}`, {
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes/${nodeId}/tasks/${taskId}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -200,7 +201,7 @@ export function useTasks(mindmapId: string | null, nodeId: string | null) {
 
   const deleteTask = async (mindmapId: string, nodeId: string, taskId: string) => {
     try {
-      const response = await fetch(`/api/mindmaps/${mindmapId}/nodes/${nodeId}/tasks/${taskId}`, {
+      const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes/${nodeId}/tasks/${taskId}`), {
         method: "DELETE",
       })
       if (!response.ok) throw new Error("Failed to delete task")
@@ -237,7 +238,7 @@ export function useAllNodeTasks(mindmapId: string | null, nodes: Node[]) {
 
       // Fetch tasks for all nodes in parallel
       const taskPromises = nodes.map(async (node) => {
-        const response = await fetch(`/api/mindmaps/${mindmapId}/nodes/${node.id}/tasks`)
+        const response = await fetch(getApiUrl(`/mindmaps/${mindmapId}/nodes/${node.id}/tasks`))
         if (!response.ok) throw new Error(`Failed to fetch tasks for node ${node.id}`)
         const data = await response.json()
         return { nodeId: node.id, tasks: data.tasks }

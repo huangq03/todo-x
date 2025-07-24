@@ -1,9 +1,39 @@
 export interface Database {
   public: {
     Tables: {
+      mindmaps: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          color: string
+          icon: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          color: string
+          icon: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          color?: string
+          icon?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       nodes: {
         Row: {
           id: string
+          mindmap_id: string
           title: string
           x: number
           y: number
@@ -16,6 +46,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          mindmap_id: string
           title: string
           x: number
           y: number
@@ -28,6 +59,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          mindmap_id?: string
           title?: string
           x?: number
           y?: number

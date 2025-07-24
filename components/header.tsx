@@ -2,8 +2,10 @@
 
 import type { Node, MindMap } from "@/types"
 import { Button } from "@/components/ui/button"
-import { Brain, CheckSquare, SplitSquareHorizontal, Focus, Settings, Moon, Sun } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Brain, CheckSquare, SplitSquareHorizontal, Focus, Settings, Moon, Sun, Database, Cloud } from "lucide-react"
 import { useTheme } from "next-themes"
+import { USE_MOCK_API } from "@/lib/api-config"
 
 interface HeaderProps {
   viewMode: "mindmap" | "todo" | "split"
@@ -26,7 +28,22 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
             <Brain className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">MindTask</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-bold text-lg">MindTask</h1>
+              <Badge variant={USE_MOCK_API ? "secondary" : "default"} className="text-xs">
+                {USE_MOCK_API ? (
+                  <>
+                    <Database className="h-3 w-3 mr-1" />
+                    Mock
+                  </>
+                ) : (
+                  <>
+                    <Cloud className="h-3 w-3 mr-1" />
+                    Live
+                  </>
+                )}
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">
               {selectedMindMap ? `${selectedMindMap.title}` : "Visual Productivity"}
             </p>
