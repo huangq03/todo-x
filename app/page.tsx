@@ -6,9 +6,11 @@ import { TodoListView } from "@/components/todo-list-view"
 import { SplitView } from "@/components/split-view"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
+import { AIChat } from "@/components/ai-chat"
 import { ThemeProvider } from "next-themes"
 import { useMindMaps, useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
 import type { Node, Task, MindMap } from "@/types"
+import { Sparkles } from "lucide-react"
 
 export default function Home() {
   const { mindmaps, loading: mindmapsLoading, error: mindmapsError, createMindMap } = useMindMaps()
@@ -16,6 +18,7 @@ export default function Home() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [viewMode, setViewMode] = useState<"mindmap" | "todo" | "split">("mindmap")
   const [focusMode, setFocusMode] = useState(false)
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
 
   // Auto-select first mindmap when mindmaps load
   useMemo(() => {
@@ -73,7 +76,18 @@ export default function Home() {
     setSelectedNode(null) // Clear selected node when switching mind maps
   }
 
-  const handleCreateMindMap = async () => {
+  const handleCreateMindMap = async (mindmapData: Omit<MindMap, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newMindMap = await createMindMap(mindmapData)
+      setSelectedMindMap(newMindMap)
+      return newMindMap
+    } catch (error) {
+      console.error("Failed to create mind map:", error)
+      throw error
+    }
+  }
+
+  const handleCreateMindMapFromSidebar = async () => {
     try {
       const newMindMap = await createMindMap({
         title: "New Mind Map",
@@ -101,15 +115,15 @@ export default function Home() {
     }
   }
 
-  const handleAddTask = async (nodeId: string, task: Omit<Task, "id">) => {
-    if (!selectedMindMap) return
-
+  const handleAddTask = async (mindmapId: string, nodeId: string, task: Omit<Task, "id">) => {
     try {
-      const newTask = await createTask(selectedMindMap.id, nodeId, task)
+      const newTask = await createTask(mindmapId, nodeId, task)
       // Update the all tasks cache
       addNodeTask(nodeId, newTask)
+      return newTask
     } catch (error) {
       console.error("Failed to add task:", error)
+      throw error
     }
   }
 
@@ -152,9 +166,22 @@ export default function Home() {
     }
 
     try {
-      await createNode(selectedMindMap.id, newNode)
+      const createdNode = await createNode(selectedMindMap.id, newNode)
+      return createdNode
     } catch (error) {
       console.error("Failed to add node:", error)
+      throw error
+    }
+  }
+
+  // Special handler for AI-generated nodes that preserves the exact structure
+  const handleCreateAINode = async (mindmapId: string, node: Node) => {
+    try {
+      const createdNode = await createNode(mindmapId, node)
+      return createdNode
+    } catch (error) {
+      console.error("Failed to create AI node:", error)
+      throw error
     }
   }
 
@@ -199,6 +226,7 @@ export default function Home() {
           setFocusMode={setFocusMode}
           selectedNode={enrichedSelectedNode}
           selectedMindMap={selectedMindMap}
+          onOpenAIChat={() => setIsAIChatOpen(true)}
         />
 
         <div className="flex-1 flex">
@@ -206,7 +234,7 @@ export default function Home() {
             mindmaps={mindmaps}
             selectedMindMap={selectedMindMap}
             onSelectMindMap={handleSelectMindMap}
-            onCreateMindMap={handleCreateMindMap}
+            onCreateMindMap={handleCreateMindMapFromSidebar}
             nodes={enrichedNodes}
             selectedNode={enrichedSelectedNode}
             onSelectNode={setSelectedNode}
@@ -220,6 +248,14 @@ export default function Home() {
                   <div className="text-6xl mb-4">🗺️</div>
                   <h3 className="text-xl font-medium mb-2">Welcome to MindTask</h3>
                   <p className="mb-4">Select a mind map from the sidebar to get started</p>
+                  <p className="text-sm mb-4">or</p>
+                  <button
+                    onClick={() => setIsAIChatOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Generate with AI
+                  </button>
                 </div>
               </div>
             ) : (
@@ -238,7 +274,7 @@ export default function Home() {
                   <TodoListView
                     node={enrichedSelectedNode}
                     onUpdateNode={handleUpdateNode}
-                    onAddTask={handleAddTask}
+                    onAddTask={(nodeId, task) => handleAddTask(selectedMindMap.id, nodeId, task)}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
                     focusMode={focusMode}
@@ -252,7 +288,7 @@ export default function Home() {
                     selectedNode={enrichedSelectedNode}
                     onSelectNode={setSelectedNode}
                     onUpdateNode={handleUpdateNode}
-                    onAddTask={handleAddTask}
+                    onAddTask={(nodeId, task) => handleAddTask(selectedMindMap.id, nodeId, task)}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
                     onAddNode={handleAddNode}
@@ -263,6 +299,15 @@ export default function Home() {
             )}
           </main>
         </div>
+
+        {/* AI Chat Modal */}
+        <AIChat
+          isOpen={isAIChatOpen}
+          onClose={() => setIsAIChatOpen(false)}
+          onCreateMindMap={handleCreateMindMap}
+          onCreateNode={handleCreateAINode}
+          onAddTask={handleAddTask}
+        />
       </div>
     </ThemeProvider>
   )

@@ -3,7 +3,18 @@
 import type { Node, MindMap } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Brain, CheckSquare, SplitSquareHorizontal, Focus, Settings, Moon, Sun, Database, Cloud } from "lucide-react"
+import {
+  Brain,
+  CheckSquare,
+  SplitSquareHorizontal,
+  Focus,
+  Settings,
+  Moon,
+  Sun,
+  Database,
+  Cloud,
+  Sparkles,
+} from "lucide-react"
 import { useTheme } from "next-themes"
 import { USE_MOCK_API } from "@/lib/api-config"
 
@@ -14,9 +25,18 @@ interface HeaderProps {
   setFocusMode: (focus: boolean) => void
   selectedNode: Node | null
   selectedMindMap: MindMap | null
+  onOpenAIChat: () => void
 }
 
-export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selectedNode, selectedMindMap }: HeaderProps) {
+export function Header({
+  viewMode,
+  setViewMode,
+  focusMode,
+  setFocusMode,
+  selectedNode,
+  selectedMindMap,
+  onOpenAIChat,
+}: HeaderProps) {
   const { theme, setTheme } = useTheme()
 
   return (
@@ -88,6 +108,16 @@ export function Header({ viewMode, setViewMode, focusMode, setFocusMode, selecte
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenAIChat}
+            className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 hover:from-purple-600 hover:to-pink-600"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Generate
+          </Button>
+
           <Button
             variant={focusMode ? "default" : "outline"}
             size="sm"
