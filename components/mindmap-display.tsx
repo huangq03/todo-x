@@ -11,9 +11,25 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { NodeComponent } from "./node-component"
 import { ConnectionLines } from "./connection-lines"
-import { ZoomIn, ZoomOut, RotateCcw, MessageSquare, Plus, Clock, MoreHorizontal, X } from "lucide-react"
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  MessageSquare,
+  Plus,
+  Clock,
+  MoreHorizontal,
+  X,
+  Edit,
+  CalendarIcon,
+} from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 import type { Node, Task, MindMap } from "@/types"
 
 interface MindMapDisplayProps {
@@ -46,6 +62,14 @@ export function MindMapDisplay({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium")
+
+  // Edit task modal state
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editTaskTitle, setEditTaskTitle] = useState("")
+
+  // Due date modal state
+  const [dueDateTask, setDueDateTask] = useState<Task | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.target === containerRef.current) {
@@ -89,6 +113,43 @@ export function MindMapDisplay({
     if (e.key === "Enter") {
       handleAddTask()
     }
+  }
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setEditTaskTitle(task.title)
+  }
+
+  const handleSaveEditTask = () => {
+    if (editingTask && selectedNode && onUpdateTask && editTaskTitle.trim()) {
+      onUpdateTask(selectedNode.id, editingTask.id, { title: editTaskTitle.trim() })
+      setEditingTask(null)
+      setEditTaskTitle("")
+    }
+  }
+
+  const handleCancelEditTask = () => {
+    setEditingTask(null)
+    setEditTaskTitle("")
+  }
+
+  const handleSetDueDate = (task: Task) => {
+    setDueDateTask(task)
+    setSelectedDate(task.dueDate ? new Date(task.dueDate) : undefined)
+  }
+
+  const handleSaveDueDate = () => {
+    if (dueDateTask && selectedNode && onUpdateTask) {
+      const dueDate = selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined
+      onUpdateTask(selectedNode.id, dueDateTask.id, { dueDate })
+      setDueDateTask(null)
+      setSelectedDate(undefined)
+    }
+  }
+
+  const handleCancelDueDate = () => {
+    setDueDateTask(null)
+    setSelectedDate(undefined)
   }
 
   const getCompletionPercentage = (node: Node) => {
@@ -304,7 +365,7 @@ export function MindMapDisplay({
                         {task.dueDate && (
                           <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <Clock className="h-3 w-3" />
-                            {task.dueDate}
+                            {format(new Date(task.dueDate), "MMM d, yyyy")}
                           </div>
                         )}
                       </div>
@@ -333,8 +394,14 @@ export function MindMapDisplay({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem>Edit Task</DropdownMenuItem>
-                            <DropdownMenuItem>Set Due Date</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                              <Edit className="h-3 w-3 mr-2" />
+                              Edit Task
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetDueDate(task)}>
+                              <CalendarIcon className="h-3 w-3 mr-2" />
+                              Set Due Date
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
                               onClick={() => onDeleteTask && onDeleteTask(selectedNode.id, task.id)}
@@ -358,6 +425,73 @@ export function MindMapDisplay({
           </ScrollArea>
         </div>
       )}
+
+      {/* Edit Task Modal */}
+      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Task title..."
+              value={editTaskTitle}
+              onChange={(e) => setEditTaskTitle(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSaveEditTask()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelEditTask}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditTask} disabled={!editTaskTitle.trim()}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Due Date Modal */}
+      <Dialog open={!!dueDateTask} onOpenChange={() => setDueDateTask(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Due Date</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Due Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {dueDateTask?.dueDate && (
+              <Button variant="outline" size="sm" onClick={() => setSelectedDate(undefined)} className="w-full">
+                Remove Due Date
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDueDate}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveDueDate}>Save Due Date</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
