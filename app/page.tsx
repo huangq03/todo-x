@@ -15,13 +15,7 @@ export default function Home() {
   const [taskModalNode, setTaskModalNode] = useState<Node | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // Auto-select first mindmap when mindmaps load
-  useMemo(() => {
-    if (mindmaps.length > 0 && !selectedMindMap) {
-      setSelectedMindMap(mindmaps[0])
-    }
-  }, [mindmaps, selectedMindMap])
-
+  // Don't auto-select first mindmap - let user choose
   const { nodes, loading: nodesLoading, createNode, updateNode } = useNodes(selectedMindMap?.id || null)
 
   // Fetch all tasks for all nodes automatically
@@ -64,7 +58,7 @@ export default function Home() {
   const handleCreateMindMap = async (mindmapData: Omit<MindMap, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newMindMap = await createMindMap(mindmapData)
-      setSelectedMindMap(newMindMap)
+      setSelectedMindMap(newMindMap) // Auto-select the newly created mind map
       return newMindMap
     } catch (error) {
       console.error("Failed to create mind map:", error)
@@ -139,6 +133,12 @@ export default function Home() {
     setTaskModalNode(null)
   }
 
+  const handleSelectMindMap = (mindmap: MindMap) => {
+    setSelectedMindMap(mindmap)
+    setSelectedNode(null) // Clear selected node when switching mind maps
+    setTaskModalNode(null)
+  }
+
   const handleNodeDoubleClick = (node: Node) => {
     setTaskModalNode(node)
   }
@@ -152,7 +152,7 @@ export default function Home() {
             <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-500 mx-auto"></div>
           </div>
           <h2 className="text-xl font-semibold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Loading MindTask AI
+            Loading MindTask
           </h2>
           <p className="text-muted-foreground">Preparing your intelligent workspace...</p>
         </div>
@@ -166,13 +166,13 @@ export default function Home() {
       <ChatSidebar
         mindmaps={mindmaps}
         selectedMindMap={selectedMindMap}
-        onSelectMindMap={setSelectedMindMap}
+        onSelectMindMap={handleSelectMindMap}
         onNewChat={handleNewChat}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {selectedMindMap && enrichedNodes.length > 0 ? (
+        {selectedMindMap ? (
           <MindMapDisplay
             mindmap={selectedMindMap}
             nodes={enrichedNodes}

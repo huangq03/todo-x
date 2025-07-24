@@ -1,7 +1,8 @@
 "use client"
+
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, Brain, MessageSquare } from "lucide-react"
+import { Plus, MessageSquare, Brain } from "lucide-react"
 import type { MindMap } from "@/types"
 
 interface ChatSidebarProps {
@@ -17,16 +18,16 @@ export function ChatSidebar({ mindmaps, selectedMindMap, onSelectMindMap, onNewC
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-6 w-6 bg-gray-600 dark:bg-gray-400 rounded flex items-center justify-center">
-            <Brain className="h-4 w-4 text-white dark:text-gray-800" />
+          <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center">
+            <Brain className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           </div>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">MindTask</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">MindTask</span>
         </div>
 
         <Button
           onClick={onNewChat}
           variant="ghost"
-          className="w-full justify-start text-sm font-normal text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <Plus className="h-4 w-4 mr-2" />
           New Mind Map
@@ -40,29 +41,33 @@ export function ChatSidebar({ mindmaps, selectedMindMap, onSelectMindMap, onNewC
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No mind maps yet</p>
-              <p className="text-xs mt-1">Create your first one!</p>
+              <p className="text-xs">Create your first one!</p>
             </div>
           ) : (
             <div className="space-y-1">
               {mindmaps.map((mindmap) => (
-                <button
+                <div
                   key={mindmap.id}
                   onClick={() => onSelectMindMap(mindmap)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors text-sm ${
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
                     selectedMindMap?.id === mindmap.id
-                      ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                      ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm">{mindmap.icon}</span>
-                    <span className="font-medium truncate">{mindmap.title}</span>
+                  <div className="flex items-start gap-3">
+                    <span className="text-base flex-shrink-0">{mindmap.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{mindmap.title}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
+                        {mindmap.description}
+                      </p>
+                    </div>
                     {selectedMindMap?.id === mindmap.id && (
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full ml-auto" />
+                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{mindmap.description}</p>
-                </button>
+                </div>
               ))}
             </div>
           )}
