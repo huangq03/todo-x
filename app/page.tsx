@@ -1,16 +1,15 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { MindMapView } from "@/components/mind-map-view"
 import { TodoListView } from "@/components/todo-list-view"
 import { SplitView } from "@/components/split-view"
-import { Header } from "@/components/header"
-import { Sidebar } from "@/components/sidebar"
+import { AIHeader } from "@/components/ai-native-header"
+import { AISidebar } from "@/components/ai-native-sidebar"
+import { AIMindMapView } from "@/components/ai-mind-map-view"
 import { AIChat } from "@/components/ai-chat"
 import { ThemeProvider } from "next-themes"
 import { useMindMaps, useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
 import type { Node, Task, MindMap } from "@/types"
-import { Sparkles } from "lucide-react"
 
 export default function Home() {
   const { mindmaps, loading: mindmapsLoading, error: mindmapsError, createMindMap } = useMindMaps()
@@ -191,11 +190,17 @@ export default function Home() {
   if (isLoading) {
     return (
       <ThemeProvider>
-        <div className="h-screen flex items-center justify-center">
+        <div className="h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-purple-950 dark:via-slate-900 dark:to-pink-950">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your mind maps...</p>
-            {allTasksLoading && <p className="text-sm text-muted-foreground mt-2">Fetching tasks...</p>}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+              <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-500 mx-auto"></div>
+            </div>
+            <h2 className="text-xl font-semibold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Loading MindTask AI
+            </h2>
+            <p className="text-muted-foreground">Preparing your intelligent workspace...</p>
+            {allTasksLoading && <p className="text-sm text-muted-foreground mt-2">Syncing tasks...</p>}
           </div>
         </div>
       </ThemeProvider>
@@ -205,11 +210,17 @@ export default function Home() {
   if (hasError) {
     return (
       <ThemeProvider>
-        <div className="h-screen flex items-center justify-center">
+        <div className="h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-red-950 dark:via-slate-900 dark:to-orange-950">
           <div className="text-center">
-            <div className="text-red-500 text-4xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
-            <p className="text-muted-foreground">{mindmapsError || nodesError || allTasksError}</p>
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
+            <p className="text-muted-foreground mb-4">{mindmapsError || nodesError || allTasksError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:from-red-600 hover:to-orange-600 transition-colors"
+            >
+              Retry Connection
+            </button>
           </div>
         </div>
       </ThemeProvider>
@@ -218,8 +229,8 @@ export default function Home() {
 
   return (
     <ThemeProvider>
-      <div className="h-screen flex flex-col bg-background">
-        <Header
+      <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <AIHeader
           viewMode={viewMode}
           setViewMode={setViewMode}
           focusMode={focusMode}
@@ -230,11 +241,12 @@ export default function Home() {
         />
 
         <div className="flex-1 flex">
-          <Sidebar
+          <AISidebar
             mindmaps={mindmaps}
             selectedMindMap={selectedMindMap}
             onSelectMindMap={handleSelectMindMap}
             onCreateMindMap={handleCreateMindMapFromSidebar}
+            onOpenAIChat={() => setIsAIChatOpen(true)}
             nodes={enrichedNodes}
             selectedNode={enrichedSelectedNode}
             onSelectNode={setSelectedNode}
@@ -242,60 +254,41 @@ export default function Home() {
           />
 
           <main className="flex-1">
-            {!selectedMindMap ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">🗺️</div>
-                  <h3 className="text-xl font-medium mb-2">Welcome to MindTask</h3>
-                  <p className="mb-4">Select a mind map from the sidebar to get started</p>
-                  <p className="text-sm mb-4">or</p>
-                  <button
-                    onClick={() => setIsAIChatOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Generate with AI
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {viewMode === "mindmap" && (
-                  <MindMapView
-                    nodes={enrichedNodes}
-                    selectedNode={enrichedSelectedNode}
-                    onSelectNode={setSelectedNode}
-                    onUpdateNode={handleUpdateNode}
-                    onAddNode={handleAddNode}
-                  />
-                )}
+            {viewMode === "mindmap" && (
+              <AIMindMapView
+                nodes={enrichedNodes}
+                selectedNode={enrichedSelectedNode}
+                onSelectNode={setSelectedNode}
+                onUpdateNode={handleUpdateNode}
+                onAddNode={handleAddNode}
+                onOpenAIChat={() => setIsAIChatOpen(true)}
+              />
+            )}
 
-                {viewMode === "todo" && enrichedSelectedNode && (
-                  <TodoListView
-                    node={enrichedSelectedNode}
-                    onUpdateNode={handleUpdateNode}
-                    onAddTask={(nodeId, task) => handleAddTask(selectedMindMap.id, nodeId, task)}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    focusMode={focusMode}
-                    loading={selectedTasksLoading}
-                  />
-                )}
+            {viewMode === "todo" && enrichedSelectedNode && (
+              <TodoListView
+                node={enrichedSelectedNode}
+                onUpdateNode={handleUpdateNode}
+                onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                focusMode={focusMode}
+                loading={selectedTasksLoading}
+              />
+            )}
 
-                {viewMode === "split" && (
-                  <SplitView
-                    nodes={enrichedNodes}
-                    selectedNode={enrichedSelectedNode}
-                    onSelectNode={setSelectedNode}
-                    onUpdateNode={handleUpdateNode}
-                    onAddTask={(nodeId, task) => handleAddTask(selectedMindMap.id, nodeId, task)}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onAddNode={handleAddNode}
-                    tasksLoading={selectedTasksLoading}
-                  />
-                )}
-              </>
+            {viewMode === "split" && (
+              <SplitView
+                nodes={enrichedNodes}
+                selectedNode={enrichedSelectedNode}
+                onSelectNode={setSelectedNode}
+                onUpdateNode={handleUpdateNode}
+                onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onAddNode={handleAddNode}
+                tasksLoading={selectedTasksLoading}
+              />
             )}
           </main>
         </div>
