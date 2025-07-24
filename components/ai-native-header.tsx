@@ -23,6 +23,7 @@ import {
 import { useTheme } from "next-themes"
 import { USE_MOCK_API } from "@/lib/api-config"
 import { useState } from "react"
+import { SettingsDialog } from "./settings-dialog"
 
 interface AIHeaderProps {
   viewMode: "mindmap" | "todo" | "split"
@@ -45,6 +46,7 @@ export function AIHeader({
 }: AIHeaderProps) {
   const { theme, setTheme } = useTheme()
   const [searchQuery, setSearchQuery] = useState("")
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const getAISuggestion = () => {
     if (!selectedMindMap) return "Create your first mind map with AI"
@@ -116,7 +118,7 @@ export function AIHeader({
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" onClick={() => setIsSettingsOpen(true)}>
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -225,6 +227,9 @@ export function AIHeader({
           </div>
         </div>
       )}
+
+      {/* Settings Dialog */}
+      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   )
 }
