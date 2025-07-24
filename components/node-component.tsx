@@ -34,11 +34,14 @@ export function NodeComponent({
 
     e.stopPropagation()
     setIsDragging(true)
-    const rect = nodeRef.current?.getBoundingClientRect()
-    if (rect) {
+
+    // Calculate offset from the node's center position (accounting for the transform)
+    const container = nodeRef.current?.parentElement
+    if (container) {
+      const containerRect = container.getBoundingClientRect()
       setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: e.clientX - containerRect.left - node.x,
+        y: e.clientY - containerRect.top - node.y,
       })
     }
   }
