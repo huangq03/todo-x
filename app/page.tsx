@@ -1,22 +1,19 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { TodoListView } from "@/components/todo-list-view"
-import { SplitView } from "@/components/split-view"
-import { AIHeader } from "@/components/ai-native-header"
-import { AISidebar } from "@/components/ai-native-sidebar"
-import { AIMindMapView } from "@/components/ai-mind-map-view"
-import { AIChat } from "@/components/ai-chat"
-import { useMindMaps, useNodes, useTasks, useAllNodeTasks } from "@/hooks/use-api"
+import { ChatSidebar } from "@/components/chat-sidebar"
+import { ChatInterface } from "@/components/chat-interface"
+import { MindMapDisplay } from "@/components/mindmap-display"
+import { NodeTaskModal } from "@/components/node-task-modal"
+import { useMindMaps, useNodes, useAllNodeTasks, useTasks } from "@/hooks/use-api"
 import type { Node, Task, MindMap } from "@/types"
 
 export default function Home() {
-  const { mindmaps, loading: mindmapsLoading, error: mindmapsError, createMindMap } = useMindMaps()
+  const { mindmaps, loading: mindmapsLoading, createMindMap } = useMindMaps()
   const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-  const [viewMode, setViewMode] = useState<"mindmap" | "todo" | "split">("mindmap")
-  const [focusMode, setFocusMode] = useState(false)
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
+  const [taskModalNode, setTaskModalNode] = useState<Node | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
 
   // Auto-select first mindmap when mindmaps load
   useMemo(() => {
@@ -25,32 +22,18 @@ export default function Home() {
     }
   }, [mindmaps, selectedMindMap])
 
-  const {
-    nodes,
-    loading: nodesLoading,
-    error: nodesError,
-    createNode,
-    updateNode,
-  } = useNodes(selectedMindMap?.id || null)
+  const { nodes, loading: nodesLoading, createNode, updateNode } = useNodes(selectedMindMap?.id || null)
 
   // Fetch all tasks for all nodes automatically
-  const {
-    nodeTasks,
-    loading: allTasksLoading,
-    error: allTasksError,
-    updateNodeTask,
-    addNodeTask,
-    removeNodeTask,
-  } = useAllNodeTasks(selectedMindMap?.id || null, nodes)
+  const { nodeTasks, updateNodeTask, addNodeTask, removeNodeTask } = useAllNodeTasks(selectedMindMap?.id || null, nodes)
 
-  // Fetch tasks for the selected node (for real-time updates)
+  // Fetch tasks for the task modal node
   const {
-    tasks: selectedNodeTasks,
-    loading: selectedTasksLoading,
+    tasks: modalNodeTasks,
     createTask,
     updateTask,
     deleteTask,
-  } = useTasks(selectedMindMap?.id || null, selectedNode?.id || null)
+  } = useTasks(selectedMindMap?.id || null, taskModalNode?.id || null)
 
   // Create enriched nodes with their tasks
   const enrichedNodes = useMemo(() => {
@@ -60,19 +43,14 @@ export default function Home() {
     }))
   }, [nodes, nodeTasks])
 
-  // Update selected node with its tasks
-  const enrichedSelectedNode = useMemo(() => {
-    if (!selectedNode) return null
+  // Create enriched task modal node with its tasks
+  const enrichedTaskModalNode = useMemo(() => {
+    if (!taskModalNode) return null
     return {
-      ...selectedNode,
-      tasks: selectedNodeTasks || nodeTasks[selectedNode.id] || [],
+      ...taskModalNode,
+      tasks: modalNodeTasks || nodeTasks[taskModalNode.id] || [],
     }
-  }, [selectedNode, selectedNodeTasks, nodeTasks])
-
-  const handleSelectMindMap = (mindmap: MindMap) => {
-    setSelectedMindMap(mindmap)
-    setSelectedNode(null) // Clear selected node when switching mind maps
-  }
+  }, [taskModalNode, modalNodeTasks, nodeTasks])
 
   const handleCreateMindMap = async (mindmapData: Omit<MindMap, "id" | "createdAt" | "updatedAt">) => {
     try {
@@ -85,31 +63,13 @@ export default function Home() {
     }
   }
 
-  const handleCreateMindMapFromSidebar = async () => {
+  const handleCreateNode = async (mindmapId: string, node: Node) => {
     try {
-      const newMindMap = await createMindMap({
-        title: "New Mind Map",
-        description: "A new mind map for organizing thoughts",
-        color: "#6B7280",
-        icon: "🧠",
-      })
-      setSelectedMindMap(newMindMap)
+      const createdNode = await createNode(mindmapId, node)
+      return createdNode
     } catch (error) {
-      console.error("Failed to create mind map:", error)
-    }
-  }
-
-  const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
-    if (!selectedMindMap) return
-
-    try {
-      await updateNode(selectedMindMap.id, nodeId, updates)
-      // Update selected node if it's the one being updated
-      if (selectedNode?.id === nodeId) {
-        setSelectedNode((prev) => (prev ? { ...prev, ...updates } : null))
-      }
-    } catch (error) {
-      console.error("Failed to update node:", error)
+      console.error("Failed to create AI node:", error)
+      throw error
     }
   }
 
@@ -122,6 +82,19 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to add task:", error)
       throw error
+    }
+  }
+
+  const handleUpdateNode = async (nodeId: string, updates: Partial<Node>) => {
+    if (!selectedMindMap) return
+
+    try {
+      await updateNode(selectedMindMap.id, nodeId, updates)
+      if (selectedNode?.id === nodeId) {
+        setSelectedNode((prev) => (prev ? { ...prev, ...updates } : null))
+      }
+    } catch (error) {
+      console.error("Failed to update node:", error)
     }
   }
 
@@ -149,44 +122,17 @@ export default function Home() {
     }
   }
 
-  const handleAddNode = async (parentId?: string) => {
-    if (!selectedMindMap) return
-
-    const newNode: Node = {
-      id: Date.now().toString(),
-      title: "New Node",
-      x: Math.random() * 600 + 100,
-      y: Math.random() * 400 + 100,
-      color: "#6B7280",
-      icon: "📋",
-      parent: parentId,
-      mindmapId: selectedMindMap.id,
-    }
-
-    try {
-      const createdNode = await createNode(selectedMindMap.id, newNode)
-      return createdNode
-    } catch (error) {
-      console.error("Failed to add node:", error)
-      throw error
-    }
+  const handleNewChat = () => {
+    setSelectedMindMap(null)
+    setSelectedNode(null)
+    setTaskModalNode(null)
   }
 
-  // Special handler for AI-generated nodes that preserves the exact structure
-  const handleCreateAINode = async (mindmapId: string, node: Node) => {
-    try {
-      const createdNode = await createNode(mindmapId, node)
-      return createdNode
-    } catch (error) {
-      console.error("Failed to create AI node:", error)
-      throw error
-    }
+  const handleNodeDoubleClick = (node: Node) => {
+    setTaskModalNode(node)
   }
 
-  const isLoading = mindmapsLoading || nodesLoading || allTasksLoading
-  const hasError = mindmapsError || nodesError || allTasksError
-
-  if (isLoading) {
+  if (mindmapsLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-purple-950 dark:via-slate-900 dark:to-pink-950">
         <div className="text-center">
@@ -198,102 +144,52 @@ export default function Home() {
             Loading MindTask AI
           </h2>
           <p className="text-muted-foreground">Preparing your intelligent workspace...</p>
-          {allTasksLoading && <p className="text-sm text-muted-foreground mt-2">Syncing tasks...</p>}
-        </div>
-      </div>
-    )
-  }
-
-  if (hasError) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-red-950 dark:via-slate-900 dark:to-orange-950">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
-          <p className="text-muted-foreground mb-4">{mindmapsError || nodesError || allTasksError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:from-red-600 hover:to-orange-600 transition-colors"
-          >
-            Retry Connection
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <AIHeader
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        focusMode={focusMode}
-        setFocusMode={setFocusMode}
-        selectedNode={enrichedSelectedNode}
+    <div className="h-screen flex bg-white dark:bg-gray-900">
+      {/* Sidebar */}
+      <ChatSidebar
+        mindmaps={mindmaps}
         selectedMindMap={selectedMindMap}
-        onOpenAIChat={() => setIsAIChatOpen(true)}
+        onSelectMindMap={setSelectedMindMap}
+        onNewChat={handleNewChat}
       />
 
-      <div className="flex-1 flex">
-        <AISidebar
-          mindmaps={mindmaps}
-          selectedMindMap={selectedMindMap}
-          onSelectMindMap={handleSelectMindMap}
-          onCreateMindMap={handleCreateMindMapFromSidebar}
-          onOpenAIChat={() => setIsAIChatOpen(true)}
-          nodes={enrichedNodes}
-          selectedNode={enrichedSelectedNode}
-          onSelectNode={setSelectedNode}
-          onAddNode={handleAddNode}
-        />
-
-        <main className="flex-1">
-          {viewMode === "mindmap" && (
-            <AIMindMapView
-              nodes={enrichedNodes}
-              selectedNode={enrichedSelectedNode}
-              onSelectNode={setSelectedNode}
-              onUpdateNode={handleUpdateNode}
-              onAddNode={handleAddNode}
-              onOpenAIChat={() => setIsAIChatOpen(true)}
-            />
-          )}
-
-          {viewMode === "todo" && enrichedSelectedNode && (
-            <TodoListView
-              node={enrichedSelectedNode}
-              onUpdateNode={handleUpdateNode}
-              onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
-              onUpdateTask={handleUpdateTask}
-              onDeleteTask={handleDeleteTask}
-              focusMode={focusMode}
-              loading={selectedTasksLoading}
-            />
-          )}
-
-          {viewMode === "split" && (
-            <SplitView
-              nodes={enrichedNodes}
-              selectedNode={enrichedSelectedNode}
-              onSelectNode={setSelectedNode}
-              onUpdateNode={handleUpdateNode}
-              onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
-              onUpdateTask={handleUpdateTask}
-              onDeleteTask={handleDeleteTask}
-              onAddNode={handleAddNode}
-              tasksLoading={selectedTasksLoading}
-            />
-          )}
-        </main>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {selectedMindMap && enrichedNodes.length > 0 ? (
+          <MindMapDisplay
+            mindmap={selectedMindMap}
+            nodes={enrichedNodes}
+            selectedNode={selectedNode}
+            onSelectNode={setSelectedNode}
+            onUpdateNode={handleUpdateNode}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            isGenerating={isGenerating}
+          />
+        ) : (
+          <ChatInterface
+            onCreateMindMap={handleCreateMindMap}
+            onCreateNode={handleCreateNode}
+            onAddTask={handleAddTask}
+            isGenerating={isGenerating}
+            setIsGenerating={setIsGenerating}
+          />
+        )}
       </div>
 
-      {/* AI Chat Modal */}
-      <AIChat
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onCreateMindMap={handleCreateMindMap}
-        onCreateNode={handleCreateAINode}
-        onAddTask={handleAddTask}
+      {/* Node Task Modal */}
+      <NodeTaskModal
+        node={enrichedTaskModalNode}
+        isOpen={!!taskModalNode}
+        onClose={() => setTaskModalNode(null)}
+        onAddTask={(nodeId, task) => handleAddTask(selectedMindMap!.id, nodeId, task)}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
       />
     </div>
   )
